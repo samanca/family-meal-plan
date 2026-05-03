@@ -1,0 +1,48 @@
+name: Generate Weekly Meal Plan Site
+
+on:
+  schedule:
+    - cron: "30 4 * * 6" # Friday 11:30 PM Eastern during EDT = Saturday 04:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install openai
+
+      - name: Generate site
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python scripts/generate_site.py
+
+      - name: Commit generated site
+        run: |
+          git config user.name "meal-plan-bot"
+          git config user.email "meal-plan-bot@users.noreply.github.com"
+          git add site
+          git commit -m "Update weekly meal plan" || echo "No changes"
+          git push
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
